@@ -16,7 +16,8 @@ namespace TinyFlare
             DIT_NONE = 0,
             DIT_DEBUG_INFO,                 //基础Debug信息，Site,Edge,Corner基础信息，包括位置、索引信息，Site是白色方块,索引为绿色；Corner是白色小菱形，索引为黄色；Edge是白线，索引为紫色；Border属性一律用红色复写，
             DIT_DEBUG_EXTRA_INFO,           //额外Debug信息，包括Site,Edge,Corner的临近Site,Edge,Corner的基础信息, 绿色是Site的额外信息，紫色是Edge的额外信息，黄色是Corner的额外信息
-            DIT_CORNERS_GRAPH_INFO,         //Corners的海拔图
+            DIT_CORNERS_GRAPH_INFO,         //Corners的信息图
+            DIT_SITES_GRAPH_INFO,           //Sites的信息图
             DIT_BIOME_INFO
         };
 
@@ -26,6 +27,18 @@ namespace TinyFlare
             DEIT_CORNER_EXTRA_INFO,
             DEIT_EDGE_EXTRA_INFO
         };
+
+        public enum CornersGraphInfoType
+        {
+            CGIT_ELEVATION = 0,
+            CGIT_WATER_AND_COAST
+        };
+        public enum SitesGraphInfoType
+        {
+            SGIT_ELEVATION = 0,
+            SGIT_WATER_AND_COAST
+        };
+
         public static class MapDebugHelper
         {
             static Color HexToColor(string hex)
@@ -89,9 +102,16 @@ namespace TinyFlare
                         else if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
                         {
                             IMDraw.Flush();
-                            showCornerElevations = true;
+                            cornersGraphInfoType = CornersGraphInfoType.CGIT_ELEVATION;
                             showCornerElevationNum = true;
+                            showCornerElevationDebug = false;
 
+                        }
+                        else if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
+                        {
+                            IMDraw.Flush();
+                            sitesGraphInfoType = SitesGraphInfoType.SGIT_ELEVATION;
+                            showSiteElevationDebug = false;
                         }
                         else if (debugInfo == DebugInfoType.DIT_BIOME_INFO)
                         {
@@ -276,14 +296,14 @@ namespace TinyFlare
                     IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.white, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
                     IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.green, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, site.index.ToString());
                     //显示临近Site
-                    IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.2f, site.point.y - tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n0.ToString());
-                    IMDraw.Label(new Vector3(site.point.x , site.point.y - tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n1.ToString());
-                    IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.2f, site.point.y - tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n2.ToString());
-                    IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.2f, site.point.y, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n3.ToString());
-                    IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.2f, site.point.y, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n4.ToString());
-                    IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.2f, site.point.y + tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n5.ToString());
-                    IMDraw.Label(new Vector3(site.point.x, site.point.y + tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n6.ToString());
-                    IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.2f, site.point.y + tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.n7.ToString());
+                    IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.2f, site.point.y - tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s0.ToString());
+                    IMDraw.Label(new Vector3(site.point.x , site.point.y - tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s1.ToString());
+                    IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.2f, site.point.y - tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s2.ToString());
+                    IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.2f, site.point.y, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s3.ToString());
+                    IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.2f, site.point.y, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s4.ToString());
+                    IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.2f, site.point.y + tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s5.ToString());
+                    IMDraw.Label(new Vector3(site.point.x, site.point.y + tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s6.ToString());
+                    IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.2f, site.point.y + tileHeight * 0.2f, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.s7.ToString());
                     //显示临近Corner
                     IMDraw.Label(new Vector3(site.point.x - tileWidth * 0.4f, site.point.y - tileHeight * 0.4f, 0), Color.yellow, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.c0.ToString());
                     IMDraw.Label(new Vector3(site.point.x + tileWidth * 0.4f, site.point.y - tileHeight * 0.4f, 0), Color.yellow, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, site.c1.ToString());
@@ -363,16 +383,16 @@ namespace TinyFlare
             //----------------------------------------
 
             //---------Corners GraphInfo---------------------
-            private static bool showCornerElevations = false;
-            public static bool ShowCornerElevations
+            private static CornersGraphInfoType cornersGraphInfoType = CornersGraphInfoType.CGIT_ELEVATION;
+            public static CornersGraphInfoType CornersGraphInfoType
             {
-                get { return showCornerElevations; }
+                get { return cornersGraphInfoType; }
                 set
                 {
                     if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
                     {
-                        if (showCornerElevations != value)
-                            showCornerElevations = value;
+                        if (cornersGraphInfoType != value)
+                            cornersGraphInfoType = value;
                     }
                 }
             }
@@ -390,27 +410,136 @@ namespace TinyFlare
                 }
             }
 
+            private static bool showCornerElevationDebug = false;
+            public static bool ShowCornerElevationDebug
+            {
+                get { return showCornerElevationDebug; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
+                    {
+                        if (showCornerElevationDebug != value)
+                            showCornerElevationDebug = value;
+                    }
+                }
+            }
+
             public static void DrawCornersGraphInfo(MapGraph graph)
             {
                 if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
                 {
-                    if (showCornerElevations)
-                        DrawCornerElevations(graph.Corners(), showCornerElevationNum);
-                    
-
+                    if (cornersGraphInfoType == CornersGraphInfoType.CGIT_ELEVATION)
+                        DrawCornersElevations(graph.Corners(), showCornerElevationNum, showCornerElevationDebug);
+                    else if (cornersGraphInfoType == CornersGraphInfoType.CGIT_WATER_AND_COAST)
+                        DrawCornersWaterAndCoastInfo(graph.Corners());
                 }
             }
-            private static void DrawCornerElevations(NativeArray<Corner> corners, bool showElevationNum = true)
+            private static void DrawCornersElevations(NativeArray<Corner> corners, bool showElevationNum = true, bool showCornerElevationDebug = false)
             {
                 for (int i = 0; i < corners.Length; ++i)
                 {
                     Corner corner = corners[i];
-                    Color color = new Color(corner.elevation / 255, corner.elevation / 255, corner.elevation / 255, 1.0f);
+                    Color color = new Color(corner.elevation, corner.elevation, corner.elevation, 1.0f);
                     IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), color, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "◆");
-                    IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.yellow, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, corner.elevation.ToString());
+                    if(showCornerElevationDebug)
+                        IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.yellow, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, corner.elevation.ToString());
+                }
+            }
+            private static void DrawCornersWaterAndCoastInfo(NativeArray<Corner> corners)
+            {
+                for (int i = 0; i < corners.Length; ++i)
+                {
+                    Corner corner = corners[i];
+                    if (corner.water)
+                        IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.blue, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "◆");
+                    else
+                    {
+                        if (corner.coast)
+                            IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.cyan, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "◆");
+                        else
+                            IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.yellow, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "◆");
+                    }
                 }
             }
             //------------------------------------------
+
+            //---------Sites GraphInfo---------------------
+            private static SitesGraphInfoType sitesGraphInfoType = SitesGraphInfoType.SGIT_WATER_AND_COAST;
+            public static SitesGraphInfoType SitesGraphInfoType
+            {
+                get { return sitesGraphInfoType; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
+                    {
+                        if (sitesGraphInfoType != value)
+                            sitesGraphInfoType = value;
+                    }
+                }
+            }
+
+            private static bool showSiteElevationDebug = false;
+            public static bool ShowSiteElevationDebug
+            {
+                get { return showSiteElevationDebug; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
+                    {
+                        if (showSiteElevationDebug != value)
+                            showSiteElevationDebug = value;
+                    }
+                }
+            }
+            public static void DrawSitesGraphInfo(MapGraph graph)
+            {
+                if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
+                {
+                    if (sitesGraphInfoType == SitesGraphInfoType.SGIT_ELEVATION)
+                        DrawSitesElevations(graph.Sites(), graph.TileWidth(), graph.TileHeight(), showSiteElevationDebug);
+                    else if (sitesGraphInfoType == SitesGraphInfoType.SGIT_WATER_AND_COAST)
+                        DrawSitesWaterAndCoastInfo(graph.Sites(), graph.TileWidth(), graph.TileHeight());
+                }
+            }
+            private static void DrawSitesElevations(NativeArray<Site> sites, int tileWidth, int tileHeight, bool showSiteElevationDebug = false)
+            {
+                for (int i = 0; i < sites.Length; ++i)
+                {
+                    Site site = sites[i];
+                    if(showSiteElevationDebug)
+                    {
+                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), site.biomeType == BiomeType.BT_Ocean ? Color.blue : Color.white, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
+                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.green, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, site.elevation.ToString());
+                    }
+                    IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(site.elevation, site.elevation, site.elevation, 0.5f));
+                }
+            }
+            private static void DrawSitesWaterAndCoastInfo(NativeArray<Site> sites, int tileWidth, int tileHeight)
+            {
+                for (int i = 0; i < sites.Length; ++i)
+                {
+                    Site site = sites[i];
+                    if (site.water)
+                    {
+                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.blue, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
+                        IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(0, 0, 1, 0.5f));
+                    }
+                    else
+                    {
+                        if (site.coast)
+                        {
+                            IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.cyan, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
+                            IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(0, 1, 1, 0.5f));
+                        }
+                        else
+                        {
+                            IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.green, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
+                            IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(0, 1, 0, 0.5f));
+                        }
+                    }
+                }
+            }
+            //------------------------------------------------
         }
     }
 }

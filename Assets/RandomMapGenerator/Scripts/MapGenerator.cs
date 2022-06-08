@@ -11,8 +11,6 @@ namespace TinyFlare
     {
         public class MapGenerator : MonoBehaviour
         {
-            
-
             private MapGraph graph = new MapGraph();
             private bool hasInit = false;
             public int width = 800;
@@ -47,7 +45,7 @@ namespace TinyFlare
                     }
                 }
                 ///初始化调试信息
-                MapDebugHelper.DebugInfo = DebugInfoType.DIT_CORNERS_GRAPH_INFO;
+                MapDebugHelper.DebugInfo = DebugInfoType.DIT_SITES_GRAPH_INFO;
                 hasInit = true;
             }
 
@@ -66,6 +64,9 @@ namespace TinyFlare
                         break;
                     case DebugInfoType.DIT_CORNERS_GRAPH_INFO:
                         MapDebugHelper.DrawCornersGraphInfo(graph);
+                        break;
+                    case DebugInfoType.DIT_SITES_GRAPH_INFO:
+                        MapDebugHelper.DrawSitesGraphInfo(graph);
                         break;
                     default:
                         break;

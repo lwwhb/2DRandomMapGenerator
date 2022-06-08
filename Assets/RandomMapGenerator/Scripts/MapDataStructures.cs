@@ -76,7 +76,7 @@ namespace TinyFlare
                 public bool                 coast;                      // 是否为岸边
                 public bool                 border;                     // 是否为边界
                 public BiomeType            biomeType;                  // 地表生态区类型
-                public int                  n0,n1,n2,n3,n4,n5,n6,n7;    // 邻居节点
+                public int                  s0,s1,s2,s3,s4,s5,s6,s7;    // 邻居节点
                 public int                  e0,e1,e2,e3;                // 临近边
                 public int                  c0,c1,c2,c3;                // 临近角
                 public float                elevation;                  // 海拔 0.0-1.0
@@ -94,6 +94,7 @@ namespace TinyFlare
                 public bool                 water;          // 是否是水面
                 public bool                 coast;          // 是否为岸边
                 public bool                 border;         // 是否为边界
+                public BiomeType            biomeType;      // 地表生态区类型
                 public int                  s0,s1,s2,s3;    // 临近的基本单位位置点
                 public int                  e0,e1,e2,e3;    // 所属的边
                 public int                  c0,c1,c2,c3;    // 临近的拐角点

@@ -383,8 +383,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   width: 800
   height: 600
-  numX: 4
-  numY: 3
+  numX: 80
+  numY: 60
 --- !u!4 &809572464
 Transform:
   m_ObjectHideFlags: 0

@@ -5,6 +5,7 @@
  * Date: 2022-5-31
  */
 using System;
+using System.Collections.Generic;
 using TinyFlare.RandomMapGenerator.MapDataStructures;
 using Unity.Collections;
 using Unity.Mathematics;
@@ -19,18 +20,21 @@ namespace TinyFlare
 		 */
 		public class TilesDiagram
 		{
-			private NativeArray<Site> sites;            //Sites数组
+			public static float SCALE_FACTOR = 1.1f;                        //越大越增加山区面积, 越大海洋深度下降越快
+			public static int LAKE_THRESHOLD = 2;							//越大，形成湖的几率越高。数量在1-4之间
+
+			private NativeArray<Site> sites;								//Sites数组
 			public NativeArray<Site> Sites { get { return sites; } }
-			private NativeArray<Edge> edges;            //Edges数组
+			private NativeArray<Edge> edges;								//Edges数组
 			public NativeArray<Edge> Edges { get { return edges; } }
-			private NativeArray<Corner> corners;        //Corners数据
+			private NativeArray<Corner> corners;							//Corners数据
 			public NativeArray<Corner> Corners { get { return corners; } }
-			private Rect boundRect;                     //地图边界矩形
-			private int tileWidth;                      //单个Tile长
+			private Rect boundRect;											//地图边界矩形
+			private int tileWidth;											//单个Tile长
 			public int TileWidth { get { return tileWidth; } }
-			private int tileHeight;                     //单个Tile宽
+			private int tileHeight;											//单个Tile宽
 			public int TileHeight { get { return tileHeight; } }
-			private int tileNumX, tileNumY;             //水平与垂直方向Tile的个数
+			private int tileNumX, tileNumY;									//水平与垂直方向Tile的个数	
 
 			private Func<float2, bool> inside;
 
@@ -71,8 +75,14 @@ namespace TinyFlare
 
 				//构建Corners海拔
 				AssignCornerElevations();
-
-
+				//基于Corner信息计算Tile的Ocean、Water属性
+				AssignOceanCoastAndLand();
+				//重新构建Corners海拔
+				RedistributeCornersElevations();
+				//设置陆地Regions海拔（也就是sites的海拔）
+				AssignRegionsElevations();
+				//设置海洋Regions海拔（也就是sites的海拔）
+				AssignOceanRegionsElevations();
 				return true;
 			}
 
@@ -148,11 +158,13 @@ namespace TinyFlare
 						Corner corner = corners[index];
 						corner.index = index;
 						corner.point = new float2(j * tileWidth - 0.5f * tileWidth, i * tileHeight - 0.5f * tileHeight);
+						corner.water = false;
 						corner.coast = false;
 						if (j == 0 || j == tileNumX || i == 0 || i == tileNumY)
 							corner.border = true;
 						else
 							corner.border = false;
+						corner.biomeType = BiomeType.BT_Cliff;
 						corners[index] = corner;
 					}
 				}
@@ -221,15 +233,15 @@ namespace TinyFlare
 						 *  建立邻居节点
 						 *  -------------------------
 						 *  |       |       |       |
-						 *  |   n0  |   n1  |   n2  |
+						 *  |   s0  |   s1  |   s2  |
 						 *  |       |       |       |
 						 *  -------------------------
 						 *  |       |       |       |
-						 *  |   n3  |   x   |   n4  |
+						 *  |   s3  |   x   |   s4  |
 						 *  |       |       |       |
 						 *  -------------------------
 						 *  |       |       |       |
-						 *  |   n5  |   n6  |   n7  |
+						 *  |   s5  |   s6  |   s7  |
 						 *  |       |       |       |
 						 *  -------------------------   
 						 */
@@ -239,110 +251,110 @@ namespace TinyFlare
 							{
 								if (j == 0)
 								{
-									site.n0 = -1;
-									site.n1 = -1;
-									site.n2 = -1;
-									site.n3 = -1;
-									site.n4 = index + 1;
-									site.n5 = -1;
-									site.n6 = index + tileNumX;
-									site.n7 = index + tileNumX + 1;
+									site.s0 = -1;
+									site.s1 = -1;
+									site.s2 = -1;
+									site.s3 = -1;
+									site.s4 = index + 1;
+									site.s5 = -1;
+									site.s6 = index + tileNumX;
+									site.s7 = index + tileNumX + 1;
 								}
 								else if (j == tileNumX - 1)
 								{
-									site.n0 = -1;
-									site.n1 = -1;
-									site.n2 = -1;
-									site.n3 = index - 1;
-									site.n4 = -1;
-									site.n5 = index + tileNumX - 1;
-									site.n6 = index + tileNumX;
-									site.n7 = -1;
+									site.s0 = -1;
+									site.s1 = -1;
+									site.s2 = -1;
+									site.s3 = index - 1;
+									site.s4 = -1;
+									site.s5 = index + tileNumX - 1;
+									site.s6 = index + tileNumX;
+									site.s7 = -1;
 								}
 								else
 								{
-									site.n0 = -1;
-									site.n1 = -1;
-									site.n2 = -1;
-									site.n3 = index - 1;
-									site.n4 = index + 1;
-									site.n5 = index + tileNumX - 1;
-									site.n6 = index + tileNumX;
-									site.n7 = index + tileNumX + 1;
+									site.s0 = -1;
+									site.s1 = -1;
+									site.s2 = -1;
+									site.s3 = index - 1;
+									site.s4 = index + 1;
+									site.s5 = index + tileNumX - 1;
+									site.s6 = index + tileNumX;
+									site.s7 = index + tileNumX + 1;
 								}
 							}
 							else if (i == tileNumY - 1)
 							{
 								if (j == 0)
 								{
-									site.n0 = -1;
-									site.n1 = index - tileNumX;
-									site.n2 = index - tileNumX + 1;
-									site.n3 = -1;
-									site.n4 = index + 1;
-									site.n5 = -1;
-									site.n6 = -1;
-									site.n7 = -1;
+									site.s0 = -1;
+									site.s1 = index - tileNumX;
+									site.s2 = index - tileNumX + 1;
+									site.s3 = -1;
+									site.s4 = index + 1;
+									site.s5 = -1;
+									site.s6 = -1;
+									site.s7 = -1;
 								}
 								else if (j == tileNumX - 1)
 								{
-									site.n0 = index - tileNumX - 1;
-									site.n1 = index - tileNumX;
-									site.n2 = -1;
-									site.n3 = index - 1;
-									site.n4 = -1;
-									site.n5 = -1;
-									site.n6 = -1;
-									site.n7 = -1;
+									site.s0 = index - tileNumX - 1;
+									site.s1 = index - tileNumX;
+									site.s2 = -1;
+									site.s3 = index - 1;
+									site.s4 = -1;
+									site.s5 = -1;
+									site.s6 = -1;
+									site.s7 = -1;
 								}
 								else
 								{
-									site.n0 = index - tileNumX - 1;
-									site.n1 = index - tileNumX;
-									site.n2 = index - tileNumX + 1;
-									site.n3 = index - 1;
-									site.n4 = index + 1;
-									site.n5 = -1;
-									site.n6 = -1;
-									site.n7 = -1;
+									site.s0 = index - tileNumX - 1;
+									site.s1 = index - tileNumX;
+									site.s2 = index - tileNumX + 1;
+									site.s3 = index - 1;
+									site.s4 = index + 1;
+									site.s5 = -1;
+									site.s6 = -1;
+									site.s7 = -1;
 								}
 							}
 							else
 							{
 								if (j == 0)
 								{
-									site.n0 = -1;
-									site.n1 = index - tileNumX;
-									site.n2 = index - tileNumX + 1;
-									site.n3 = -1;
-									site.n4 = index + 1;
-									site.n5 = -1;
-									site.n6 = index + tileNumX;
-									site.n7 = index + tileNumX + 1;
+									site.s0 = -1;
+									site.s1 = index - tileNumX;
+									site.s2 = index - tileNumX + 1;
+									site.s3 = -1;
+									site.s4 = index + 1;
+									site.s5 = -1;
+									site.s6 = index + tileNumX;
+									site.s7 = index + tileNumX + 1;
 								}
 								else if (j == tileNumX - 1)
 								{
-									site.n0 = index - tileNumX - 1;
-									site.n1 = index - tileNumX;
-									site.n2 = -1;
-									site.n3 = index - 1;
-									site.n4 = -1;
-									site.n5 = index + tileNumX - 1;
-									site.n6 = index + tileNumX;
-									site.n7 = -1;
+									site.s0 = index - tileNumX - 1;
+									site.s1 = index - tileNumX;
+									site.s2 = -1;
+									site.s3 = index - 1;
+									site.s4 = -1;
+									site.s5 = index + tileNumX - 1;
+									site.s6 = index + tileNumX;
+									site.s7 = -1;
 								}
 							}
 						}
 						else
 						{
-							site.n0 = index - tileNumX - 1;
-							site.n1 = index - tileNumX;
-							site.n2 = index - tileNumX + 1;
-							site.n3 = index - 1;
-							site.n4 = index + 1;
-							site.n5 = index + tileNumX - 1;
-							site.n6 = index + tileNumX;
-							site.n7 = index + tileNumX + 1;
+							site.s0 = index - tileNumX - 1;
+							site.s1 = index - tileNumX;
+							site.s2 = index - tileNumX + 1;
+							site.s3 = index - 1;
+							site.s4 = index + 1;
+							site.s5 = index + tileNumX - 1;
+							site.s6 = index + tileNumX;
+							site.s7 = index + tileNumX + 1;
 						}
 						/*  
 						 *  建立周围的边
@@ -798,7 +810,7 @@ namespace TinyFlare
 
 				/*
 				 * 遍历简图为每个Corner指定海拔。为远离水面边界的Corner增加海拔。保证河流始终有一条通往海岸的路下坡（无局部最小值）。
-				 */ 
+				 */
 				while (!queue.IsEmpty())
 				{
 					var corner = queue.Dequeue();
@@ -809,9 +821,10 @@ namespace TinyFlare
 					adjacentCorners.Add(corner.c3);
 					for (int i = 0; i < adjacentCorners.Length; ++i)
 					{
-						if (adjacentCorners[i] != -1)
+						int adjacentIndex = adjacentCorners[i];
+						if (adjacentIndex != -1)
 						{
-							Corner adjacentCorner = corners[adjacentCorners[i]];
+							Corner adjacentCorner = corners[adjacentIndex];
 							var newElevation = 0.01f + corner.elevation;
 							if (!corner.water && !adjacentCorner.water)
 							{
@@ -823,9 +836,266 @@ namespace TinyFlare
 							if (newElevation < adjacentCorner.elevation)
 							{
 								adjacentCorner.elevation = newElevation;
-								//queue.Enqueue(adjacentCorner);
+								queue.Enqueue(adjacentCorner);
+								corners[adjacentIndex] = adjacentCorner;
 							}
 						}
+					}
+				}
+			}
+			/**
+			 * 基于Corner信息计算Tile的Ocean、Water属性
+			 */
+			private void AssignOceanCoastAndLand()
+			{
+				//根据Corner信息计算Tile的海洋属性
+				var queue = new NativeQueue<Site>(Allocator.Temp);
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					int numWater = 0;
+					var adjacentCorners = new NativeList<int>(Allocator.Temp); 
+					adjacentCorners.Add(site.c0);
+					adjacentCorners.Add(site.c1);
+					adjacentCorners.Add(site.c2);
+					adjacentCorners.Add(site.c3);
+					for (int j = 0; j < adjacentCorners.Length; ++j)
+					{
+						int adjacentIndex = adjacentCorners[j];
+						if (adjacentIndex != -1)
+						{
+							Corner adjacentCorner = corners[adjacentIndex];
+							if (adjacentCorner.water)
+							{
+								if (adjacentCorner.border)
+								{
+									site.biomeType = BiomeType.BT_Ocean;
+									queue.Enqueue(site);
+
+								}
+								numWater += 1;
+							}
+						}
+					}
+					site.water = (site.biomeType == BiomeType.BT_Ocean || numWater >= LAKE_THRESHOLD); //大于等于LAKE_THRESHOLD个边都是水的话，认为该Tile为水
+					sites[i] = site;
+				}
+				// 循环设置所有Tiles的海洋属性
+				while (!queue.IsEmpty())
+				{
+					var site = queue.Dequeue();
+					var adjacentSites = new NativeList<int>(Allocator.Temp); //只取周边4个
+					//adjacentSites.Add(site.s0);
+					adjacentSites.Add(site.s1);
+					//adjacentSites.Add(site.s2);
+					adjacentSites.Add(site.s3);
+					adjacentSites.Add(site.s4);
+					//adjacentSites.Add(site.s5);
+					adjacentSites.Add(site.s6);
+					//adjacentSites.Add(site.s7);
+					for (int i = 0; i < adjacentSites.Length; ++i)
+					{
+						int adjacentIndex = adjacentSites[i];
+						if (adjacentIndex != -1)
+						{
+							Site adjacentSite = sites[adjacentIndex];
+							if (adjacentSite.water && adjacentSite.biomeType != BiomeType.BT_Ocean)
+							{
+								adjacentSite.biomeType = BiomeType.BT_Ocean;
+								queue.Enqueue(adjacentSite);
+								sites[adjacentIndex] = adjacentSite;
+							}
+						}
+					}
+				}
+				//根据临近Tiles设置海岸线
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					int numOcean = 0;
+					int numLand = 0;
+					var adjacentSites = new NativeList<int>(Allocator.Temp);
+					adjacentSites.Add(site.s0);
+					adjacentSites.Add(site.s1);
+					adjacentSites.Add(site.s2);
+					adjacentSites.Add(site.s3);
+					adjacentSites.Add(site.s4);
+					adjacentSites.Add(site.s5);
+					adjacentSites.Add(site.s6);
+					adjacentSites.Add(site.s7);
+					for (int j = 0; j < adjacentSites.Length; ++j)
+					{
+						int adjacentIndex = adjacentSites[j];
+						if (adjacentIndex != -1)
+						{
+							Site adjacentSite = sites[adjacentIndex];
+							numOcean += adjacentSite.biomeType == BiomeType.BT_Ocean ? 1 : 0;
+							numLand += !adjacentSite.water ? 1 : 0;
+						}
+					}
+					site.coast = (numOcean > 0) && (numLand > 0);
+					sites[i] = site;
+				}
+
+				//根据Corner临近的Sites，设置Corner的海岸属性
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					int numOcean = 0;
+					int numLand = 0;
+					Corner corner = corners[i];
+					var adjacentSites = new NativeList<int>(Allocator.Temp);
+					adjacentSites.Add(corner.s0);
+					adjacentSites.Add(corner.s1);
+					adjacentSites.Add(corner.s2);
+					adjacentSites.Add(corner.s3);
+					for (int j = 0; j < adjacentSites.Length; ++j)
+					{
+						int adjacentIndex = adjacentSites[j];
+						if (adjacentIndex != -1)
+						{
+							Site adjacentSite = sites[adjacentIndex];
+							numOcean += adjacentSite.biomeType == BiomeType.BT_Ocean ? 1 : 0;
+							numLand += !adjacentSite.water ? 1 : 0;
+						}
+						else
+							numOcean += 1;
+					}
+					if(numOcean == 4)
+						corner.biomeType = BiomeType.BT_Ocean;
+					corner.coast = (numOcean > 0) && (numLand > 0);
+					corner.water = (numLand != 4) && (!corner.coast);
+					corners[i] = corner;
+				}
+			}
+
+            /*
+			 * 重新构建海拔，让低海拔变得比高海拔更普通，为此我们要从新排列Corners,并且为每一个corner设置期望海拔, 将x映射到1-x
+			 */
+            struct CornerElevationCompare : IComparer<Corner>
+            {
+                public int Compare(Corner x, Corner y)
+                {
+					return x.elevation.CompareTo(y.elevation);
+                }
+            }
+            private void RedistributeCornersElevations()
+			{
+				NativeList<Corner> cornerList = new NativeList<Corner>(Allocator.Temp);
+ 				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if ((!corner.coast) && (corner.biomeType != BiomeType.BT_Ocean)) //过滤非岸边与非海洋的Corner
+						cornerList.Add(corner);
+				}
+				cornerList.Sort(new CornerElevationCompare());
+				for (int i = 0; i < cornerList.Length; ++i)
+				{
+					Corner corner = cornerList[i];
+					// y(x) = 1 - (1-x)^2.
+					// 已知 y 求 x
+					// y = 1 - (1 - 2x + x^2)
+					// y = 2x - x^2
+					// x^2 - 2x + y = 0 再将x换成1-x
+					float y = (float)i / (cornerList.Length - 1);
+					float x = math.sqrt(SCALE_FACTOR) - math.sqrt(SCALE_FACTOR * (1 - y));
+					if (x > 1.0)
+						x = 1.0f;  // 注意检查这个操作是否会破坏斜坡downslope
+					corner.elevation = x;
+					corners[corner.index] = corner;
+				}
+
+				// 为非陆地Corner赋值
+				cornerList.Clear();
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if (corner.coast || corner.biomeType == BiomeType.BT_Ocean) //过滤岸边与海洋的Corner
+						cornerList.Add(corner);
+				}
+				for (int i = 0; i < cornerList.Length; ++i)
+				{
+					Corner corner = cornerList[i];
+					corner.elevation = 0;
+					corners[corner.index] = corner;
+				}
+			}
+
+			/*
+			 * 计算陆地Regions的海拔，（也就是sites的海拔）
+			 */
+			private void AssignRegionsElevations()
+			{
+				// Regions的海拔为其四个Corner的平均值
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					float sumElevation = 0.0f;
+					var adjacentCorners = new NativeList<int>(Allocator.Temp);
+					adjacentCorners.Add(site.c0);
+					adjacentCorners.Add(site.c1);
+					adjacentCorners.Add(site.c2);
+					adjacentCorners.Add(site.c3);
+					for (int j = 0; j < adjacentCorners.Length; ++j)
+					{
+						int adjacentIndex = adjacentCorners[j];
+						Corner corner = corners[adjacentIndex];
+						sumElevation += corner.elevation;
+					}
+					site.elevation = sumElevation / adjacentCorners.Length;
+					sites[i] = site;
+				}
+			}
+
+			/*
+			 * 计算海洋Regions海拔，（也就是sites的海拔）
+			 */
+			private void AssignOceanRegionsElevations()
+			{
+				NativeQueue<Site> queue = new NativeQueue<Site>(Allocator.Temp);
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					if (site.biomeType == BiomeType.BT_Ocean)
+					{
+						if (site.coast)
+						{
+							site.elevation = -0.2f;
+							queue.Enqueue(site);
+						}
+						else
+							site.elevation = float.NegativeInfinity;
+						sites[i] = site;
+					}	
+				}
+
+				while (!queue.IsEmpty())
+				{
+					var site = queue.Dequeue();
+					var adjacentSites = new NativeList<int>(Allocator.Temp); //只取周边4个
+					//adjacentSites.Add(site.s0);
+					adjacentSites.Add(site.s1);
+					//adjacentSites.Add(site.s2);
+					adjacentSites.Add(site.s3);
+					adjacentSites.Add(site.s4);
+					//adjacentSites.Add(site.s5);
+					adjacentSites.Add(site.s6);
+					//adjacentSites.Add(site.s7);
+
+					for (int i = 0; i < adjacentSites.Length; ++i)
+					{
+						int adjacentIndex = adjacentSites[i];
+						if(adjacentIndex != -1)
+						{
+							Site adjacentSite = sites[adjacentIndex];
+							if (adjacentSite.elevation < -1.0f)
+							{
+								float newElevation = math.max(site.elevation * SCALE_FACTOR, -1.0f);
+								adjacentSite.elevation = newElevation;
+								queue.Enqueue(adjacentSite);
+								sites[adjacentIndex] = adjacentSite;
+							}
+						}
+						
 					}
 				}
 			}
