@@ -29,10 +29,7 @@ namespace TinyFlare
                     {
                         Debug.LogError("TilesDiagram init failed!");
                         return false;
-                    }
-
-                    
-                    
+                    }                    
                 }
                 return true;
             }

@@ -83,6 +83,12 @@ namespace TinyFlare
 				AssignRegionsElevations();
 				//设置海洋Regions海拔（也就是sites的海拔）
 				AssignOceanRegionsElevations();
+				//计算Corners的下游点
+				CalculateCornersDownslopes();
+				//计算Corners的河流流量图
+				CalculateCornersWatersheds();
+				//创建河流
+				CreateRivers();
 				return true;
 			}
 
@@ -165,6 +171,9 @@ namespace TinyFlare
 						else
 							corner.border = false;
 						corner.biomeType = BiomeType.BT_Cliff;
+						corner.downslope = -1;      
+						corner.watershed = -1;      
+						corner.watershed_size = 0;
 						corners[index] = corner;
 					}
 				}
@@ -195,7 +204,7 @@ namespace TinyFlare
 							edge.border = true;
 						else
 							edge.border = false;
-
+						edge.river = 0;
 						edges[index] = edge;
 					}
 				}
@@ -212,7 +221,7 @@ namespace TinyFlare
 							edge.border = true;
 						else
 							edge.border = false;
-
+						edge.river = 0;
 						edges[index] = edge;
 					}
 				}
@@ -1096,6 +1105,152 @@ namespace TinyFlare
 							}
 						}
 						
+					}
+				}
+			}
+
+			/*
+			 * 计算Corners下游方向，每一个Corner指向其下游点，或者指向其本身，用于生成河流流域
+			 */
+			private void CalculateCornersDownslopes()
+			{
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					var adjacentCorners = new NativeList<int>(Allocator.Temp);
+					adjacentCorners.Add(corner.c0);
+					adjacentCorners.Add(corner.c1);
+					adjacentCorners.Add(corner.c2);
+					adjacentCorners.Add(corner.c3);
+					float minelevation = corner.elevation;
+					for (int j = 0; j < adjacentCorners.Length; ++j)
+					{
+						int adjacentIndex = adjacentCorners[j];
+						if(adjacentIndex != -1)
+                        {
+							Corner adjacentCorner = corners[adjacentIndex];
+							if (adjacentCorner.elevation <= minelevation)
+							{
+								minelevation = adjacentCorner.elevation;
+								corner.downslope = adjacentIndex;
+							}
+						}
+					}
+					corners[i] = corner;
+				}
+			}
+
+			/*
+			 * 计算河流流域分水岭, watershed是下游图中最后一个下游点
+			 */
+			private void CalculateCornersWatersheds()
+			{
+				// 初始化最初的watershed
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					corner.watershed = corner.index;
+					if (corner.biomeType != BiomeType.BT_Ocean && !corner.coast)
+						corner.watershed = corner.downslope;
+					corners[i] = corner;
+				}
+			
+				// 沿着下游图指向到达海岸，将迭代次数限制为100次，尽管大多数时间内当Corners=2000时，只需要20次迭代，因为大多数点离海岸不远
+				for (int i = 0; i < 100; i++) //100是个魔数，出错后可以修改
+				{
+					bool changed = false;
+					for (int j = 0; j < corners.Length; ++j)
+					{
+						Corner corner = corners[j];
+						if(corner.watershed != -1)
+						{
+							Corner watershedCorner = corners[corner.watershed];
+
+							if (corner.biomeType != BiomeType.BT_Ocean && corner.coast && !watershedCorner.coast)
+							{
+								if (corner.downslope != -1)
+								{
+									Corner downslopeCorner = corners[corner.downslope];
+									if (downslopeCorner.watershed != -1)
+									{
+										Corner downslopeCornerWatershed = corners[downslopeCorner.watershed];
+										if (downslopeCornerWatershed.biomeType != BiomeType.BT_Ocean)
+										{
+											corner.watershed = downslopeCorner.watershed;
+											corners[j] = corner;
+											changed = true;
+										}
+									}
+								}
+							}
+						}
+					}
+					if (changed)
+						break;
+				}
+
+				//计算流域水量
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if (corner.watershed != -1)
+					{
+						Corner watershedCorner = corners[corner.watershed];
+						if (!watershedCorner.water)
+							watershedCorner.watershed_size += 1;
+						else
+							watershedCorner.watershed_size = -1;
+
+						corners[corner.watershed] = watershedCorner;
+					}
+				}
+			}
+
+			/*
+			 * 沿着Edges创建河流，随机挑选corner点，沿着下游图标记edges与corners为河流
+			 */
+			private void CreateRivers()
+			{
+				
+				for (var i = 0; i < (boundRect.xMax + boundRect.yMax) / 4; i++)
+				{
+					int randomIndex = rand.NextInt(0, corners.Length - 1);
+					Corner corner = corners[randomIndex];
+					if (corner.biomeType == BiomeType.BT_Ocean || corner.elevation < 0.3f || corner.elevation > 0.9f)
+						continue;
+					// 如果希望河往东南流添加:
+					//if ((corners[corner.downslope].point.x > corner.point.x) || (corners[corner.downslope].point.y > corner.point.y))
+					//	continue;
+					while (!corner.coast)
+					{
+						if (corner.downslope == -1 || corner.index == corner.downslope)
+							break;
+						NativeList<int> adjacentEdges = new NativeList<int>(Allocator.Temp);
+						adjacentEdges.Add(corner.e0);
+						adjacentEdges.Add(corner.e1);
+						adjacentEdges.Add(corner.e2);
+						adjacentEdges.Add(corner.e3);
+						int edgeIndex = -1;
+						for (int j = 0; j < adjacentEdges.Length; j++)
+						{
+							int adjacentIndex = adjacentEdges[j];
+							if (edges[adjacentIndex].c0 == corner.downslope || edges[adjacentIndex].c1 == corner.downslope)
+								edgeIndex = edges[adjacentIndex].index;
+						}
+
+						if (edgeIndex != -1)
+						{
+							Edge edge = edges[edgeIndex];
+							edge.river++;
+							edges[edgeIndex] = edge;
+						}
+						Corner temp = corners[corner.index];
+						temp.river++;
+						corners[corner.index] = temp;
+						Corner downslopCorner = corners[corner.downslope];
+						//downslopCorner.river++;  // TODO: fix double count
+						//corners[corner.downslope] = downslopCorner;
+						corner = downslopCorner;
 					}
 				}
 			}

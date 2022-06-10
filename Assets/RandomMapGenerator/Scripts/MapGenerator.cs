@@ -45,7 +45,7 @@ namespace TinyFlare
                     }
                 }
                 ///初始化调试信息
-                MapDebugHelper.DebugInfo = DebugInfoType.DIT_SITES_GRAPH_INFO;
+                MapDebugHelper.DebugInfo = DebugInfoType.DIT_EDGES_GRAPH_INFO;
                 hasInit = true;
             }
 
@@ -67,6 +67,9 @@ namespace TinyFlare
                         break;
                     case DebugInfoType.DIT_SITES_GRAPH_INFO:
                         MapDebugHelper.DrawSitesGraphInfo(graph);
+                        break;
+                    case DebugInfoType.DIT_EDGES_GRAPH_INFO:
+                        MapDebugHelper.DrawEdgesGraphInfo(graph);
                         break;
                     default:
                         break;

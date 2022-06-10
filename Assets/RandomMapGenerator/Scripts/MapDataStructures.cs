@@ -101,6 +101,10 @@ namespace TinyFlare
                 public float                elevation;      // 海拔 0.0-1.0
                 public float                moisture;       // 降雨量 0.0-1.0
                 public float                flux;		    // 通量 0.0-1.0
+                public int                  river;          // 0 代表没有河流, 或者代表和数流量
+                public int                  downslope;      // 指向下游临近Corner
+                public int                  watershed;      // 指向海岸线Corner或这没有
+                public int                  watershed_size;
             }
 
             /*
@@ -113,9 +117,8 @@ namespace TinyFlare
                 public bool                 border;     // 是否为边界
                 public int                  s0, s1;     // 边两遍的基本单位位置点
                 public int                  c0, c1;     // 拐角点c0,c1构成边
-                public float                elevation;  // 海拔 0.0-1.0
-                public float                moisture;   // 降雨量 0.0-1.0
-                public float                flux;		// 通量 0.0-1.0
+                public int                  river;      // volume of water, or 0
+                public int                  cost;	    // path cost 
             }
         }
     }
