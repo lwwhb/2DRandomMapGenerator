@@ -20,27 +20,28 @@ namespace TinyFlare
 		 */
 		public class TilesDiagram
 		{
-			public static float SCALE_FACTOR = 1.1f;                        //越大越增加山区面积, 越大海洋深度下降越快
-			public static int LAKE_THRESHOLD = 2;							//越大，形成湖的几率越高。数量在1-4之间
+			public static float SCALE_FACTOR = 1.5f;                        //越大越增加山区面积, 越大海洋深度下降越快
+			public static int LAKE_THRESHOLD = 3;                           //越大，形成湖的几率越高。数量在1-4之间
+			public static int RIVER_THRESHOLD = 4;							//越大，河流条数越少, 区间为1-10之间
 
-			private NativeArray<Site> sites;								//Sites数组
+			protected NativeArray<Site> sites;								//Sites数组
 			public NativeArray<Site> Sites { get { return sites; } }
-			private NativeArray<Edge> edges;								//Edges数组
+			protected NativeArray<Edge> edges;								//Edges数组
 			public NativeArray<Edge> Edges { get { return edges; } }
-			private NativeArray<Corner> corners;							//Corners数据
+			protected NativeArray<Corner> corners;							//Corners数据
 			public NativeArray<Corner> Corners { get { return corners; } }
-			private Rect boundRect;											//地图边界矩形
-			private int tileWidth;											//单个Tile长
+			protected Rect boundRect;                                           //地图边界矩形
+			protected int tileWidth;											//单个Tile长
 			public int TileWidth { get { return tileWidth; } }
-			private int tileHeight;											//单个Tile宽
+			protected int tileHeight;											//单个Tile宽
 			public int TileHeight { get { return tileHeight; } }
-			private int tileNumX, tileNumY;									//水平与垂直方向Tile的个数	
+			protected int tileNumX, tileNumY;                                   //水平与垂直方向Tile的个数	
 
-			private Func<float2, bool> inside;
+			protected Func<float2, bool> inside;
 
-			private uint randomSeed = 10000;		// 待定义
+			protected uint randomSeed = 10000;		// 待定义
 			public static Unity.Mathematics.Random rand;
-			private bool needsMoreRandomness = true;
+			protected bool needsMoreRandomness = false;
 
 			public TilesDiagram()
 			{ }
@@ -48,7 +49,7 @@ namespace TinyFlare
 			/*
 			 * 初始化
 			 */
-			public bool Init(int width, int height, int numX, int numY)
+			public virtual bool Init(int width, int height, int numX, int numY)
 			{
 				if ((width % numX != 0) || (height % numY != 0))
 				{
@@ -80,22 +81,40 @@ namespace TinyFlare
 				//重新构建Corners海拔
 				RedistributeCornersElevations();
 				//设置陆地Regions海拔（也就是sites的海拔）
-				AssignRegionsElevations();
+				AssignLandRegionsElevations();
 				//设置海洋Regions海拔（也就是sites的海拔）
 				AssignOceanRegionsElevations();
+
 				//计算Corners的下游点
 				CalculateCornersDownslopes();
 				//计算Corners的河流流量图
 				CalculateCornersWatersheds();
 				//创建河流
 				CreateRivers();
+
+				//设置Corner的Fluxes
+				AssignCornerFluxes();
+				//改变水分总体分布，使其均匀分布
+				RedistributeCornersFluxes();
+				//设置Regions的通量（也就是sites的通量）
+				AssignRegionsFluxes();
+
+				//根据Corners计算湿度，这次不是从海洋开始计算，而是从河流与湖泊开始
+				AssignCornerMoisture();
+				//改变湿度总体分布，使其均匀分布
+				RedistributeCornersMoisture();
+				//根据corners的平均湿度指定Regions湿度
+				AssignRegionsMoistures();
+
+				//设置区域的的生物群落（也就是Sites的生物群落）
+				AssignRegionsBiomes();
 				return true;
 			}
 
 			/*
 			 * 销毁
 			 */
-			public void Destroy()
+			public virtual void Destroy()
 			{
 				if (sites != null && sites.IsCreated)
 					sites.Dispose();
@@ -108,7 +127,7 @@ namespace TinyFlare
 			/*
 			 * 初始化地图Site,Edge,Corner基础数据，测试后改成job比较性能(待优化)
 			 */
-			private void InitMapData()
+			protected void InitMapData()
 			{
 				/*  
 				 *  初始化节点数据
@@ -402,7 +421,7 @@ namespace TinyFlare
 			/*
 			 * 建立corner与site、edge、corner的关系(待优化成job)
 			 */
-			private void BuildCornersRelationship()
+			protected void BuildCornersRelationship()
 			{
 				for (int i = 0; i < tileNumY + 1; ++i)
 				{
@@ -789,7 +808,7 @@ namespace TinyFlare
 			 *   |         |
 			 *   c----e----c    
 			 */
-			private void BuildRelationship()
+			protected void BuildRelationship()
 			{
 				BuildSitesRelationship();		//构建Site与site、edge、corner的关系
 				BuildCornersRelationship();     //建立corner与site、edge、corner的关系
@@ -799,7 +818,7 @@ namespace TinyFlare
 			/*
              * 构建Corners的海拔
              */
-			private void AssignCornerElevations()
+			protected void AssignCornerElevations()
 			{
 				var queue = new NativeQueue<Corner>(Allocator.Temp);
 				for (int i = 0; i < corners.Length; ++i)
@@ -855,7 +874,7 @@ namespace TinyFlare
 			/**
 			 * 基于Corner信息计算Tile的Ocean、Water属性
 			 */
-			private void AssignOceanCoastAndLand()
+			protected void AssignOceanCoastAndLand()
 			{
 				//根据Corner信息计算Tile的海洋属性
 				var queue = new NativeQueue<Site>(Allocator.Temp);
@@ -987,7 +1006,7 @@ namespace TinyFlare
 					return x.elevation.CompareTo(y.elevation);
                 }
             }
-            private void RedistributeCornersElevations()
+            protected void RedistributeCornersElevations()
 			{
 				NativeList<Corner> cornerList = new NativeList<Corner>(Allocator.Temp);
  				for (int i = 0; i < corners.Length; ++i)
@@ -1032,7 +1051,7 @@ namespace TinyFlare
 			/*
 			 * 计算陆地Regions的海拔，（也就是sites的海拔）
 			 */
-			private void AssignRegionsElevations()
+			protected void AssignLandRegionsElevations()
 			{
 				// Regions的海拔为其四个Corner的平均值
 				for (int i = 0; i < sites.Length; ++i)
@@ -1058,7 +1077,7 @@ namespace TinyFlare
 			/*
 			 * 计算海洋Regions海拔，（也就是sites的海拔）
 			 */
-			private void AssignOceanRegionsElevations()
+			protected void AssignOceanRegionsElevations()
 			{
 				NativeQueue<Site> queue = new NativeQueue<Site>(Allocator.Temp);
 				for (int i = 0; i < sites.Length; ++i)
@@ -1212,11 +1231,11 @@ namespace TinyFlare
 			private void CreateRivers()
 			{
 				
-				for (var i = 0; i < (boundRect.xMax + boundRect.yMax) / 4; i++)
+				for (var i = 0; i < (tileNumX + tileNumX) / RIVER_THRESHOLD; i++)
 				{
 					int randomIndex = rand.NextInt(0, corners.Length - 1);
 					Corner corner = corners[randomIndex];
-					if (corner.biomeType == BiomeType.BT_Ocean || corner.elevation < 0.3f || corner.elevation > 0.9f)
+					if (corner.biomeType == BiomeType.BT_Ocean || corner.elevation < 0.5f || corner.elevation > 0.9f)
 						continue;
 					// 如果希望河往东南流添加:
 					//if ((corners[corner.downslope].point.x > corner.point.x) || (corners[corner.downslope].point.y > corner.point.y))
@@ -1252,6 +1271,306 @@ namespace TinyFlare
 						//corners[corner.downslope] = downslopCorner;
 						corner = downslopCorner;
 					}
+				}
+			}
+
+			/*
+			 * 设置Corner的flux
+			 */
+			private void AssignCornerFluxes()
+			{
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if (corner.downslope != -1)
+					{
+						Corner downslopeCorner = corners[corner.downslope];
+						while (downslopeCorner.biomeType != BiomeType.BT_Ocean)
+						{
+							downslopeCorner.flux += 1.0f;
+							corners[downslopeCorner.index] = downslopeCorner;
+							if (downslopeCorner.coast || downslopeCorner.downslope == -1)
+								break;
+							downslopeCorner = corners[downslopeCorner.downslope];
+						}
+					}
+				}
+				float maxValue = 0;
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					if (corners[i].flux > maxValue)
+						maxValue = corners[i].flux;
+				}
+				if (maxValue == 0)
+					maxValue = 1;
+
+				int nbins = 1000;
+				float step = maxValue / nbins;
+				float invstep = 1.0f / step;
+				NativeArray<int> bins = new NativeArray<int>(nbins, Allocator.Temp);
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					float flux = corner.flux;
+					int binIndex = (int)math.floor(flux * invstep);
+					if (binIndex >= bins.Length)
+						binIndex = bins.Length - 1;
+					bins[binIndex]++;
+				}
+
+				double _fluxCapPercentile = 0.995f;
+				float acc = 0.0f;
+				float maxflux = 0.0f;
+				for (int i = 0; i < nbins; i++)
+				{
+					float pct = (float)bins[i] / corners.Length;
+					acc += pct;
+					if (acc > _fluxCapPercentile)
+					{
+						maxflux = (i + 1) * step;
+						break;
+					}
+				}
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					float flux = corner.flux;
+					flux = math.min(maxflux, flux);
+					flux /= maxflux;
+					corner.flux = flux;
+					corners[i] = corner;
+				}
+			}
+
+			/*
+			 * 改变通量总体分布，使其均匀分布
+			 */
+			struct CornerFluxesCompare : IComparer<Corner>
+			{
+				public int Compare(Corner x, Corner y)
+				{
+					return x.flux.CompareTo(y.flux);
+				}
+			}
+			private void RedistributeCornersFluxes()
+			{
+				NativeList<Corner> cornerList = new NativeList<Corner>(Allocator.Temp);
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if ((!corner.coast) && (corner.biomeType != BiomeType.BT_Ocean)) //过滤非岸边与非海洋的Corner
+						cornerList.Add(corner);
+				}
+				cornerList.Sort(new CornerFluxesCompare());
+				for (int i = 0; i < cornerList.Length; ++i)
+				{
+					Corner corner = cornerList[i];
+					corner.flux = (float)i / (cornerList.Length - 1);
+					corners[corner.index] = corner;
+				}
+			}
+			/*
+			 * 设置Regions的通量（也就是sites的通量）
+			 */
+			private void AssignRegionsFluxes()
+			{
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					float sumFlux = 0.0f;
+					var adjacentCorners = new NativeList<int>(Allocator.Temp);
+					adjacentCorners.Add(site.c0);
+					adjacentCorners.Add(site.c1);
+					adjacentCorners.Add(site.c2);
+					adjacentCorners.Add(site.c3);
+					for (int j = 0; j < adjacentCorners.Length; ++j)
+					{
+						int adjacentIndex = adjacentCorners[j];
+						if (adjacentIndex != -1)
+						{
+							Corner adjacentCorner = corners[adjacentIndex];
+							sumFlux += adjacentCorner.flux;
+						}
+					}
+					site.flux = sumFlux / 4;
+					sites[i] = site;
+				}
+			}
+			/*
+			 *	根据Corners计算湿度，这次不是从海洋开始计算，而是从河流与湖泊开始，使其均匀覆盖从0.0到1.0的整个范围。然后根据corners的平均湿度指定Regions湿度。 
+			 */
+			private void AssignCornerMoisture()
+			{
+				//计算淡水
+				NativeQueue<Corner> cornersQueue = new NativeQueue<Corner>(Allocator.Temp);
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if ((corner.water || corner.river > 0) && corner.biomeType != BiomeType.BT_Ocean)
+					{
+						corner.moisture = corner.river > 0 ? math.min(3.0f, (0.2f * corner.river)) : 1.0f;
+						corners[i] = corner;
+						cornersQueue.Enqueue(corner);
+					}
+					else
+						corner.moisture = 0;
+				}
+
+				while (!cornersQueue.IsEmpty())
+				{
+					var corner = cornersQueue.Dequeue();
+					var adjacentCorners = new NativeList<int>(Allocator.Temp);
+					adjacentCorners.Add(corner.c0);
+					adjacentCorners.Add(corner.c1);
+					adjacentCorners.Add(corner.c2);
+					adjacentCorners.Add(corner.c3);
+					for (int j = 0; j < adjacentCorners.Length; ++j)
+					{
+						int adjacentIndex = adjacentCorners[j];
+						if (adjacentIndex != -1)
+						{
+							Corner adjacentCorner = corners[adjacentIndex];
+							float newMoisture = corner.moisture * 0.9f;
+							if (newMoisture > adjacentCorner.moisture)
+							{
+								adjacentCorner.moisture = newMoisture;
+								corners[adjacentIndex] = adjacentCorner;
+								cornersQueue.Enqueue(adjacentCorner);
+							}
+						}
+					}
+				}
+				//计算海水
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if (corner.biomeType == BiomeType.BT_Ocean || corner.coast)
+						corner.moisture = 1.0f;
+				}
+			}
+
+			/*
+			 * 改变湿度总体分布，使其均匀分布
+			 */
+			struct CornerMoisturesCompare : IComparer<Corner>
+			{
+				public int Compare(Corner x, Corner y)
+				{
+					return x.flux.CompareTo(y.flux);
+				}
+			}
+			private void RedistributeCornersMoisture()
+			{
+				NativeList<Corner> cornerList = new NativeList<Corner>(Allocator.Temp);
+				for (int i = 0; i < corners.Length; ++i)
+				{
+					Corner corner = corners[i];
+					if ((!corner.coast) && (corner.biomeType != BiomeType.BT_Ocean)) //过滤非岸边与非海洋的Corner
+						cornerList.Add(corner);
+				}
+				cornerList.Sort(new CornerMoisturesCompare());
+				for (int i = 0; i < cornerList.Length; ++i)
+				{
+					Corner corner = cornerList[i];
+					corner.moisture = (float)i / (cornerList.Length - 1);
+					corners[corner.index] = corner;
+				}
+			}
+
+			/*
+			 * 根据corners的平均湿度指定Regions湿度
+			 */
+			private void AssignRegionsMoistures()
+			{
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					float sumMoisture = 0.0f;
+					var adjacentCorners = new NativeList<int>(Allocator.Temp);
+					adjacentCorners.Add(site.c0);
+					adjacentCorners.Add(site.c1);
+					adjacentCorners.Add(site.c2);
+					adjacentCorners.Add(site.c3);
+					for (int j = 0; j < adjacentCorners.Length; ++j)
+					{
+						int adjacentIndex = adjacentCorners[j];
+						if (adjacentIndex != -1)
+						{
+							Corner adjacentCorner = corners[adjacentIndex];
+							sumMoisture += adjacentCorner.moisture;
+						}
+					}
+					site.moisture = sumMoisture / 4;
+					sites[i] = site;
+				}
+			}
+
+			/*
+			 * 设置区域的的生物群落（也就是Sites的生物群落）
+			 */
+			protected virtual void AssignRegionsBiomes()
+			{
+				for (int i = 0; i < sites.Length; ++i)
+				{
+					Site site = sites[i];
+					if (site.water && site.biomeType == BiomeType.BT_Ocean)
+						continue;
+					else if (site.water)
+					{
+						if (site.elevation < 0.1f)
+							site.biomeType = BiomeType.BT_Marsh;
+						else if (site.elevation > 0.8f)
+							site.biomeType = BiomeType.BT_Ice;
+						else
+							site.biomeType = BiomeType.BT_Lake;
+					}
+					else if (site.coast)
+					{
+						site.biomeType = BiomeType.BT_Beach;
+					}
+					else if (site.elevation > 0.8f)
+					{
+						if (site.moisture > 0.5f)
+							site.biomeType = BiomeType.BT_Snow;
+						else if (site.moisture > 0.33f)
+							site.biomeType = BiomeType.BT_Tundra;
+						else if (site.moisture > 0.16f)
+							site.biomeType = BiomeType.BT_Bare;
+						else
+							site.biomeType = BiomeType.BT_Scorched;
+					}
+					else if (site.elevation > 0.6f)
+					{
+						if (site.moisture > 0.66f)
+							site.biomeType = BiomeType.BT_Taiga;
+						else if (site.moisture > 0.33f)
+							site.biomeType = BiomeType.BT_Shrubland;
+						else
+							site.biomeType = BiomeType.BT_TemperateDesert;
+					}
+					else if (site.elevation > 0.3f)
+					{
+						if (site.moisture > 0.83f)
+							site.biomeType = BiomeType.BT_TemperateRainForest;
+						else if (site.moisture > 0.50f)
+							site.biomeType = BiomeType.BT_TemperateDeciduousForest;
+						else if (site.moisture > 0.16f)
+							site.biomeType = BiomeType.BT_Grassland;
+						else
+							site.biomeType = BiomeType.BT_TemperateDesert;
+					}
+					else
+					{
+						if (site.moisture > 0.66f)
+							site.biomeType = BiomeType.BT_TropicalRainForest;
+						else if (site.moisture > 0.33f)
+							site.biomeType = BiomeType.BT_TropicalSeasonalForest;
+						else if (site.moisture > 0.16f)
+							site.biomeType = BiomeType.BT_Grassland;
+						else
+							site.biomeType = BiomeType.BT_SubtropicalDesert;
+					}
+					sites[i] = site;
 				}
 			}
 		}

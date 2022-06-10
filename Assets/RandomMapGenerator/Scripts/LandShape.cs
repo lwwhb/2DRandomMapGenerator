@@ -12,9 +12,9 @@ namespace TinyFlare
     {
         public class LandShape
         {
-			private static float LAND_FACTOR = 1.07f;   // 1.0 表示比较平; 2.0 凸起较多
-			private static float LAND_SCALE = 0.5f;     // 越大陆地越小
-			private static float LAND_SLOPE = 0.5f;		// 大陆架，越接近0，海湾越明显，越接近1，大陆架越明显
+			private static float LAND_FACTOR = 1.03f;   // 1.0 表示比较平; 2.0 凸起较多
+			private static float LAND_SCALE = 0.35f;     // 越大陆地越小
+			private static float LAND_SLOPE = 0.7f;		// 大陆架，越接近0，海湾越明显，越接近1，大陆架越明显
 			/*
 			 * 基于重叠正弦波
 			 */
@@ -42,7 +42,6 @@ namespace TinyFlare
 						|| math.abs(angle - dipAngle + 2 * math.PI) < dipWidth
 						|| math.abs(angle - dipAngle - 2 * math.PI) < dipWidth)
 					{
-						//r1 = r2 = LAND_SLOPE;
 						r1 = TilesDiagram.rand.NextFloat(0.0f, LAND_SLOPE);
 						r2 = TilesDiagram.rand.NextFloat(LAND_SLOPE, 1.0f);
 					}

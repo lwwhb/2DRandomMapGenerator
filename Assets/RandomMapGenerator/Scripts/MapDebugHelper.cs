@@ -33,12 +33,16 @@ namespace TinyFlare
         {
             CGIT_ELEVATION = 0,
             CGIT_WATER_AND_COAST,
-            CGIT_WATERSHEDS_AND_RIVER
+            CGIT_WATERSHEDS_AND_RIVER,
+            CGIT_FLUXES,
+            CGIT_MOISTURES
         };
         public enum SitesGraphInfoType
         {
             SGIT_ELEVATION = 0,
-            SGIT_WATER_AND_COAST
+            SGIT_WATER_AND_COAST,
+            SGIT_FLUXES,
+            SGIT_MOISTURES
         };
         public enum EdgesGraphInfoType
         {
@@ -95,10 +99,10 @@ namespace TinyFlare
                             IMDraw.Flush();
                             showSites = true;
                             showRegions = true;
-                            showEdges = true;
-                            showCorners = true;
-                            showIndex = true;
-                            debugBorder = true;
+                            showEdges = false;
+                            showCorners = false;
+                            showIndex = false;
+                            debugBorder = false;
                         }
                         else if (debugInfo == DebugInfoType.DIT_DEBUG_EXTRA_INFO)
                         {
@@ -108,7 +112,7 @@ namespace TinyFlare
                         else if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
                         {
                             IMDraw.Flush();
-                            cornersGraphInfoType = CornersGraphInfoType.CGIT_WATERSHEDS_AND_RIVER;
+                            cornersGraphInfoType = CornersGraphInfoType.CGIT_MOISTURES;
                             showCornerElevationNum = false;
                             showCornerDownslope = false;
                             showCornerWatersheds = false;
@@ -117,7 +121,7 @@ namespace TinyFlare
                         else if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
                         {
                             IMDraw.Flush();
-                            sitesGraphInfoType = SitesGraphInfoType.SGIT_ELEVATION;
+                            sitesGraphInfoType = SitesGraphInfoType.SGIT_MOISTURES;
                             showSiteElevationNum = false;
                         }
                         else if (debugInfo == DebugInfoType.DIT_EDGES_GRAPH_INFO)
@@ -222,7 +226,7 @@ namespace TinyFlare
                     if(debugBorder)
                         IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), site.border ? Color.red : Color.white, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
                     else
-                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.white, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
+                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), site.water? Color.blue : Color.white, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "■");
                     if (showSiteIndex)
                         IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.green, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, site.index.ToString());
                 }
@@ -461,6 +465,34 @@ namespace TinyFlare
                 }
             }
 
+            private static bool showCornerFluxesNum = false;
+            public static bool ShowCornerFluxesNum
+            {
+                get { return showCornerFluxesNum; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
+                    {
+                        if (showCornerFluxesNum != value)
+                            showCornerFluxesNum = value;
+                    }
+                }
+            }
+
+            private static bool showCornerMoisturesNum = false;
+            public static bool ShowCornerMoisturesNum
+            {
+                get { return showCornerMoisturesNum; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
+                    {
+                        if (showCornerMoisturesNum != value)
+                            showCornerMoisturesNum = value;
+                    }
+                }
+            }
+
             public static void DrawCornersGraphInfo(MapGraph graph)
             {
                 if (debugInfo == DebugInfoType.DIT_CORNERS_GRAPH_INFO)
@@ -471,6 +503,10 @@ namespace TinyFlare
                         DrawCornersWaterAndCoastInfo(graph.Corners());
                     else if (cornersGraphInfoType == CornersGraphInfoType.CGIT_WATERSHEDS_AND_RIVER)
                         DrawCornersWatershedsAndRiver(graph.Corners(), graph.Sites(), graph.TileWidth(), graph.TileHeight());
+                    else if (cornersGraphInfoType == CornersGraphInfoType.CGIT_FLUXES)
+                        DrawCornerFluxes(graph.Corners(), graph.Sites(), graph.TileWidth(), graph.TileHeight());
+                    else if (cornersGraphInfoType == CornersGraphInfoType.CGIT_MOISTURES)
+                        DrawCornerMoistures(graph.Corners(), graph.Sites(), graph.TileWidth(), graph.TileHeight());
                 }
             }
             private static void DrawCornersElevations(NativeArray<Corner> corners)
@@ -544,6 +580,36 @@ namespace TinyFlare
                         IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.white, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, corner.watershed_size.ToString());
                 }
             }
+            private static void DrawCornerFluxes(NativeArray<Corner> corners, NativeArray<Site> sites, int tileWidth, int tileHeight)
+            {
+                for (int i = 0; i < sites.Length; ++i)
+                {
+                    Site site = sites[i];
+                    IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(site.elevation, site.elevation, site.elevation, 0.5f));
+                }
+                for (int i = 0; i < corners.Length; ++i)
+                {
+                    Corner corner = corners[i];
+                    IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), corner.water ? Color.blue : Color.yellow, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "◆");
+                    if(showCornerFluxesNum)
+                        IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.yellow, LabelPivot.UPPER_LEFT, LabelAlignment.CENTER, corner.flux.ToString());
+                }
+            }
+            private static void DrawCornerMoistures(NativeArray<Corner> corners, NativeArray<Site> sites, int tileWidth, int tileHeight)
+            {
+                for (int i = 0; i < sites.Length; ++i)
+                {
+                    Site site = sites[i];
+                    IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(site.moisture, site.moisture, site.moisture, 0.5f));
+                }
+                for (int i = 0; i < corners.Length; ++i)
+                {
+                    Corner corner = corners[i];
+                    IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), corner.water ? Color.blue : Color.yellow, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, "◆");
+                    if(showCornerMoisturesNum)
+                        IMDraw.Label(new Vector3(corner.point.x, corner.point.y, 0), Color.yellow, LabelPivot.UPPER_LEFT, LabelAlignment.CENTER, corner.moisture.ToString());
+                }
+            }
             //------------------------------------------
 
             //---------Sites GraphInfo---------------------
@@ -574,6 +640,35 @@ namespace TinyFlare
                     }
                 }
             }
+
+            private static bool showSiteFluxesNum = false;
+            public static bool ShowSiteFluxesNum
+            {
+                get { return showSiteFluxesNum; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
+                    {
+                        if (showSiteFluxesNum != value)
+                            showSiteFluxesNum = value;
+                    }
+                }
+            }
+
+            private static bool showSiteMoisturesNum = false;
+            public static bool ShowSiteMoisturesNum
+            {
+                get { return showSiteMoisturesNum; }
+                set
+                {
+                    if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
+                    {
+                        if (showSiteMoisturesNum != value)
+                            showSiteMoisturesNum = value;
+                    }
+                }
+            }
+
             public static void DrawSitesGraphInfo(MapGraph graph)
             {
                 if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
@@ -582,6 +677,10 @@ namespace TinyFlare
                         DrawSitesElevations(graph.Sites(), graph.TileWidth(), graph.TileHeight());
                     else if (sitesGraphInfoType == SitesGraphInfoType.SGIT_WATER_AND_COAST)
                         DrawSitesWaterAndCoastInfo(graph.Sites(), graph.TileWidth(), graph.TileHeight());
+                    else if (sitesGraphInfoType == SitesGraphInfoType.SGIT_FLUXES)
+                        DrawSitesFluxes(graph.Sites(), graph.TileWidth(), graph.TileHeight());
+                    else if(sitesGraphInfoType == SitesGraphInfoType.SGIT_MOISTURES)
+                        DrawSitesMoistures(graph.Sites(), graph.TileWidth(), graph.TileHeight());
                 }
             }
             private static void DrawSitesElevations(NativeArray<Site> sites, int tileWidth, int tileHeight)
@@ -620,6 +719,26 @@ namespace TinyFlare
                             IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(0, 1, 0, 0.5f));
                         }
                     }
+                }
+            }
+            private static void DrawSitesFluxes(NativeArray<Site> sites, int tileWidth, int tileHeight)
+            {
+                for (int i = 0; i < sites.Length; ++i)
+                {
+                    Site site = sites[i];
+                    IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(site.flux, site.flux, site.flux, 0.5f));
+                    if(showSiteFluxesNum)
+                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.white, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, site.flux.ToString());
+                }
+            }
+            private static void DrawSitesMoistures(NativeArray<Site> sites, int tileWidth, int tileHeight)
+            {
+                for (int i = 0; i < sites.Length; ++i)
+                {
+                    Site site = sites[i];
+                    IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), tileWidth, tileHeight, IMDrawAxis.X, new Color(site.moisture, site.moisture, site.moisture, 0.5f));
+                    if(showSiteMoisturesNum)
+                        IMDraw.Label(new Vector3(site.point.x, site.point.y, 0), Color.white, LabelPivot.LOWER_RIGHT, LabelAlignment.CENTER, site.moisture.ToString());
                 }
             }
             //------------------------------------------------
@@ -662,6 +781,21 @@ namespace TinyFlare
                         Corner c1 = corners[edge.c1];
                         IMDraw.Line3D(new Vector3(c0.point.x, c0.point.y, 15), new Vector3(c1.point.x, c1.point.y, 15), Color.blue);
                         IMDraw.Label(new Vector3(edge.midpoint.x, edge.midpoint.y, 15), Color.white, LabelPivot.MIDDLE_CENTER, LabelAlignment.CENTER, edge.river.ToString());
+                    }
+                }
+            }
+            //------------------------------------------------
+
+            //---------Biome Info-----------------------------
+            public static void DrawBiomeInfo(MapGraph graph)
+            {
+                NativeArray<Site> sites = graph.Sites();
+                if (debugInfo == DebugInfoType.DIT_BIOME_INFO)
+                {
+                    for (int i = 0; i < sites.Length; ++i)
+                    {
+                        Site site = sites[i];
+                        IMDraw.Quad3D(new Vector3(site.point.x, site.point.y, 20), Quaternion.Euler(0, 90, 0), graph.TileWidth(), graph.TileHeight(), IMDrawAxis.X, BiomeColor[(int)site.biomeType]);
                     }
                 }
             }

@@ -24,7 +24,7 @@ namespace TinyFlare
             {
                 if (tilesDiagram == null)
                 {
-                    tilesDiagram = new TilesDiagram();
+                    tilesDiagram = new SimpleTilesDiagram();
                     if (!tilesDiagram.Init(width, height, numX, numY))
                     {
                         Debug.LogError("TilesDiagram init failed!");

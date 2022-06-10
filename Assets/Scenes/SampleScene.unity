@@ -383,8 +383,8 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   width: 800
   height: 600
-  numX: 20
-  numY: 15
+  numX: 40
+  numY: 30
 --- !u!4 &809572464
 Transform:
   m_ObjectHideFlags: 0
@@ -690,10 +690,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   m_Priority: 0
   m_LineComponent:
-    m_MaxLines: 40960
+    m_MaxLines: 81920
     m_RenderLayer: 1
-  m_MaxMeshVertices: 40960
-  m_MaxVisibleLabels: 4096
+  m_MaxMeshVertices: 81920
+  m_MaxVisibleLabels: 8192
   m_3DDistanceCull: 0
   m_3DDistanceCullMaxDist: 100
   m_MeshLayer: 1
