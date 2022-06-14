@@ -102,7 +102,7 @@ namespace TinyFlare
                             showEdges = false;
                             showCorners = false;
                             showIndex = false;
-                            debugBorder = false;
+                            debugBorder = true;
                         }
                         else if (debugInfo == DebugInfoType.DIT_DEBUG_EXTRA_INFO)
                         {
@@ -121,8 +121,8 @@ namespace TinyFlare
                         else if (debugInfo == DebugInfoType.DIT_SITES_GRAPH_INFO)
                         {
                             IMDraw.Flush();
-                            sitesGraphInfoType = SitesGraphInfoType.SGIT_MOISTURES;
-                            showSiteElevationNum = false;
+                            sitesGraphInfoType = SitesGraphInfoType.SGIT_ELEVATION;
+                            showSiteElevationNum = true;
                         }
                         else if (debugInfo == DebugInfoType.DIT_EDGES_GRAPH_INFO)
                         {

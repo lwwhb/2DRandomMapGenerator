@@ -20,9 +20,9 @@ namespace TinyFlare
 		 */
 		public class TilesDiagram
 		{
-			public static float SCALE_FACTOR = 1.5f;                        //越大越增加山区面积, 越大海洋深度下降越快
-			public static int LAKE_THRESHOLD = 3;                           //越大，形成湖的几率越高。数量在1-4之间
-			public static int RIVER_THRESHOLD = 4;							//越大，河流条数越少, 区间为1-10之间
+			public static float SCALE_FACTOR = 1.1f;                        //越大越增加山区面积, 越大海洋深度下降越快
+			public static int LAKE_THRESHOLD = 2;                           //越大，形成湖的几率越高。数量在1-4之间
+			public static int RIVER_THRESHOLD = 5;							//越大，河流条数越少, 区间为1-10之间
 
 			protected NativeArray<Site> sites;								//Sites数组
 			public NativeArray<Site> Sites { get { return sites; } }
@@ -41,7 +41,7 @@ namespace TinyFlare
 
 			protected uint randomSeed = 10000;		// 待定义
 			public static Unity.Mathematics.Random rand;
-			protected bool needsMoreRandomness = false;
+			protected bool needsMoreRandomness = true;
 
 			public TilesDiagram()
 			{ }
@@ -72,7 +72,7 @@ namespace TinyFlare
 				BuildRelationship();
 
 				//初始化地形类型（暂时先用一个类型）
-				inside = LandShape.makeRadial(width, height, tileWidth * 0.5f, tileHeight * 0.5f);
+				inside = LandShape.makeRadial(width, height, needsMoreRandomness);
 
 				//构建Corners海拔
 				AssignCornerElevations();
@@ -874,7 +874,7 @@ namespace TinyFlare
 			/**
 			 * 基于Corner信息计算Tile的Ocean、Water属性
 			 */
-			protected void AssignOceanCoastAndLand()
+			protected virtual void AssignOceanCoastAndLand()
 			{
 				//根据Corner信息计算Tile的海洋属性
 				var queue = new NativeQueue<Site>(Allocator.Temp);

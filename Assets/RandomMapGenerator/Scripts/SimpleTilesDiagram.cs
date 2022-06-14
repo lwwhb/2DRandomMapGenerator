@@ -6,6 +6,7 @@
  */
 
 using TinyFlare.RandomMapGenerator.MapDataStructures;
+using Unity.Collections;
 using UnityEngine;
 
 namespace TinyFlare
@@ -19,7 +20,8 @@ namespace TinyFlare
 		{
 			public SimpleTilesDiagram()
 			{
-				needsMoreRandomness = true;
+				needsMoreRandomness = false;
+				randomSeed = 38903;
 			}
 			/*
 			 * 初始化
@@ -47,7 +49,7 @@ namespace TinyFlare
 				BuildRelationship();
 
 				//初始化地形类型（暂时先用一个类型）
-				inside = LandShape.makeRadial(width, height, tileWidth * 0.5f, tileHeight * 0.5f);
+				inside = LandShape.makeRadial(width, height, true);
 
 				//构建Corners海拔
 				AssignCornerElevations();
@@ -74,6 +76,8 @@ namespace TinyFlare
 					Site site = sites[i];
 					if (site.water && site.biomeType == BiomeType.BT_Ocean)
 						continue;
+					else if(site.coast)
+						site.biomeType = BiomeType.BT_Coast;
 					else if (site.water)
 					{
 						if (site.elevation < 0.1f)
@@ -83,13 +87,13 @@ namespace TinyFlare
 						else
 							site.biomeType = BiomeType.BT_Lake;
 					}
-					else if (site.elevation > 0.8f)
+					else if (site.elevation > 0.95f)
 					{
-						site.biomeType = BiomeType.BT_Snow;
+						site.biomeType = BiomeType.BT_Scorched;
 					}
 					else if (site.elevation > 0.5f)
 					{
-						site.biomeType = BiomeType.BT_Bare;
+						site.biomeType = BiomeType.BT_TemperateDesert;
 					}
 					else if (site.elevation > 0.1f)
 					{
@@ -97,8 +101,7 @@ namespace TinyFlare
 					}
 					else
 					{
-						site.water = true;
-						site.biomeType = BiomeType.BT_River;
+						site.biomeType = BiomeType.BT_TropicalRainForest;
 					}
 					sites[i] = site;
 				}
